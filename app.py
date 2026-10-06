@@ -2,43 +2,58 @@ import streamlit as st
 from PIL import Image
 import numpy as np
 import tempfile
-import os
 
-# Config
-st.set_page_config(page_title="Brasil Relax Factory V2", layout="centered")
+st.set_page_config(page_title="Brasil Relax Factory", layout="centered")
+st.title("🇧🇷 Brasil Relax Factory V2")
+st.write("Video con lluvia + música")
 
-st.title("🇧🇷 Brasil Relax Factory")
-st.write("Video + Música - V2")
+modo = st.selectbox("Modo", ["Brasil - Lluvia", "Brasil - Bosque", "Brasil - Neblina"])
+musica = st.selectbox("Música", ["Lluvia Suave", "Bossa Nova", "Bosque Pajaros", "Sin música"])
 
-# --- OPCIONES ---
-modo = st.selectbox("Elige modo", ["Brasil - Lluvia", "Brasil - Bosque", "Brasil - Neblina"])
+uploaded = st.file_uploader("Sube imagen de cabaña", type=["jpg","jpeg","png"])
 
-musica = st.selectbox("Elige música", [
-    "Lluvia Suave (Generada)",
-    "Bossa Nova Relax (Generada)", 
-    "Bosque - Pájaros (Generada)",
-    "Sin música",
-    "Subir mi música MP3"
-])
-
-uploaded_img = st.file_uploader("Sube tu imagen de cabaña", type=["jpg","jpeg","png"])
-uploaded_audio = None
-if musica == "Subir mi música MP3":
-    uploaded_audio = st.file_uploader("Sube tu MP3", type=["mp3","wav","ogg"])
-
-# Mostrar imagen
-if uploaded_img:
-    img = Image.open(uploaded_img).convert("RGB")
-    st.image(img, caption=f"Modo: {modo}", use_container_width=True)
-    st.success("Imagen lista. Ahora genera el video con música abajo.")
-
-    if st.button("🎬 Generar Video con Música", use_container_width=True):
+if uploaded:
+    img = Image.open(uploaded).convert("RGB")
+    st.image(img, use_container_width=True)
+    st.success("Imagen lista")
+    
+    if st.button("Generar Video con Música", use_container_width=True):
         try:
-            from moviepy.editor import ImageClip, AudioClip, AudioFileClip, CompositeAudioClip
-            import moviepy.audio.fx.all as afx
-
-            with st.spinner("Creando tu video con música... 20 seg..."):
-                # 1. VIDEO - efecto zoom lento
-                duration = 8  # segundos
-                clip = ImageClip(np.array(img)).set_duration(duration)
-               
+            from moviepy.editor import ImageClip, AudioClip
+            duration = 8
+            # Video con zoom lento
+            clip = ImageClip(np.array(img)).set_duration(duration)
+            clip = clip.resize(height=720).resize(lambda t: 1 + 0.05*t)
+            clip = clip.set_position("center")
+            
+            # Audio simple
+            sr = 44100
+            if musica == "Lluvia Suave":
+                def make_audio(t):
+                    return np.random.uniform(-0.1, 0.1)
+                audio = AudioClip(lambda t: [make_audio(t)], duration=duration, fps=sr)
+                clip = clip.set_audio(audio)
+            elif musica == "Bossa Nova":
+                def make_audio(t):
+                    return 0.15 * np.sin(2 * 3.1416 * 220 * t)
+                audio = AudioClip(lambda t: [make_audio(t)], duration=duration, fps=sr)
+                clip = clip.set_audio(audio)
+            elif musica == "Bosque Pajaros":
+                def make_audio(t):
+                    return np.random.uniform(-0.05, 0.05)
+                audio = AudioClip(lambda t: [make_audio(t)], duration=duration, fps=sr)
+                clip = clip.set_audio(audio)
+            
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
+            tmp.close()
+            clip.write_videofile(tmp.name, fps=24, codec='libx264', audio_codec='aac', logger=None)
+            
+            st.success("Listo!")
+            st.video(tmp.name)
+            with open(tmp.name, "rb") as f:
+                st.download_button("Descargar Video", f.read(), file_name="brasil.mp4", mime="video/mp4", use_container_width=True)
+                
+        except Exception as e:
+            st.error(f"Error: {e}")
+else:
+    st.info("Sube una imagen para empezar")
