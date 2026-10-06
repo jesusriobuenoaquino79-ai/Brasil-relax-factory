@@ -3,39 +3,31 @@ from PIL import Image
 import numpy as np
 import tempfile
 
-# Fix para Pillow
+# Arreglo para que no falle en celular
 if not hasattr(Image, 'ANTIALIAS'):
     Image.ANTIALIAS = Image.LANCZOS
 
 from moviepy.editor import ImageClip, AudioFileClip, concatenate_audioclips
 
-st.set_page_config(page_title="Brasil Relax Final", layout="centered")
-st.title("🇧🇷 Brasil Relax - FINAL")
-st.caption("Sube 5-6 Bossa Novas de 3 min = 18 min continuos sin loop corto")
+st.set_page_config(page_title="Brasil Relax Factory", layout="centered")
+st.title("🇧🇷 Brasil Relax - FABRICA CELULAR")
+st.write("Sube las canciones de 1 en 1")
 
-duracion = st.slider("Duración video (segundos)", 8, 3600, 1200)
-# 1200 = 20 min prueba, 3600 = 1 hora final
+# Memoria para guardar las canciones
+if 'lista' not in st.session_state:
+    st.session_state.lista = []
 
-mp3s = st.file_uploader("1. SUBE 5-6 MP3 JUNTOS", type=["mp3","wav","m4a"], accept_multiple_files=True)
-imagen = st.file_uploader("2. SUBE IMAGEN CABAÑA", type=["jpg","jpeg","png"])
+duracion = st.slider("Duración del video (segundos)", 60, 3600, 1200)
 
-if imagen:
-    st.image(Image.open(imagen), use_container_width=True)
-    
-    if st.button("🚀 GENERAR VIDEO CONTINUO", type="primary", use_container_width=True):
-        if not mp3s:
-            st.error("Sube las músicas primero")
-        else:
-            with st.spinner(f"Pegando {len(mp3s)} canciones... tarda 2 min"):
-                lista_audios = []
-                for f in mp3s:
-                    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-                    tmp.write(f.read())
-                    tmp.close()
-                    clip = AudioFileClip(tmp.name)
-                    lista_audios.append(clip)
-                
-                # Pega una detrás de otra con 2 seg de cruce para que no se note el corte
-                audio_unido = concatenate_audioclips(lista_audios, padding=-2)
-                
-                # Si pide
+# Subir canciones
+mp3 = st.file_uploader("1. Sube 1 MP3 y dale a AGREGAR", type=["mp3","wav","m4a","wma"])
+
+col1, col2 = st.columns(2)
+with col1:
+    if st.button("➕ AGREGAR CANCIÓN", use_container_width=True):
+        if mp3:
+            t = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+            t.write(mp3.read())
+            t.close()
+            st.session_state.lista.append(t.name)
+            st.success(f"¡Agregada! L
