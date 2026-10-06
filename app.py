@@ -2,67 +2,40 @@ import streamlit as st
 from PIL import Image
 if not hasattr(Image, 'ANTIALIAS'):
     Image.ANTIALIAS = Image.LANCZOS
+import numpy as np, tempfile
+from moviepy.editor import ImageClip, AudioFileClip
 
-import numpy as np
-import tempfile
+st.set_page_config(page_title="Brasil Relax 1 HORA", layout="centered")
+st.title("🇧🇷 Brasil Relax - 1 HORA REAL")
 
-st.set_page_config(page_title="Brasil Relax Factory", layout="centered")
-st.title("🇧🇷 Brasil Relax Factory V3 - Con Musica")
-st.write("Ahora si con musica fuerte")
+duracion = st.slider("Duración del video (segundos)", 8, 3600, 60, help="8=prueba, 3600=1 hora")
+st.write(f"Vas a generar: {duracion//60} minutos y {duracion%60} segundos")
 
-modo = st.selectbox("Modo", ["Brasil - Lluvia", "Brasil - Bosque", "Brasil - Neblina"])
-musica = st.selectbox("Elige Musica", ["Lluvia Suave - FUERTE", "Bossa Nova - FUERTE", "Bosque Pajaros - FUERTE", "Sin musica"])
+mp3 = st.file_uploader("SUBE AQUÍ TU MP3 REAL (Bossa Nova o Lluvia de 1 hora)", type=["mp3","wav","m4a"])
+imagen = st.file_uploader("Sube imagen cabaña", type=["jpg","jpeg","png"])
 
-uploaded = st.file_uploader("Sube imagen de cabana", type=["jpg","jpeg","png"])
-
-if uploaded:
-    img = Image.open(uploaded).convert("RGB")
-    st.image(img, use_container_width=True)
-    st.success("Imagen lista")
-    
-    if st.button("Generar Video con Musica", use_container_width=True):
-        try:
-            from moviepy.editor import ImageClip, AudioClip
-            duration = 8
-            clip = ImageClip(np.array(img)).set_duration(duration).resize(height=720)
-            
-            sr = 44100
-            if musica != "Sin musica":
-                def make_audio(t):
-                    # t puede ser array
-                    if "Lluvia" in musica:
-                        # Ruido blanco fuerte
-                        return np.random.uniform(-0.5, 0.5, size=1) if np.isscalar(t) else np.random.uniform(-0.5, 0.5, size=(len(t),1))[:,0]
-                    elif "Bossa" in musica:
-                        # Acorde Bossa Nova fuerte 220Hz
-                        vol = 0.6
-                        if np.isscalar(t):
-                            return vol * np.sin(2*np.pi*220*t) + vol*0.5*np.sin(2*np.pi*330*t)
-                        else:
-                            return vol * np.sin(2*np.pi*220*t) + vol*0.5*np.sin(2*np.pi*330*t)
-                    else:
-                        # Pajaros - tonos agudos
-                        vol = 0.5
-                        if np.isscalar(t):
-                            return vol * np.sin(2*np.pi*800*t) * (1 if np.random.rand()>0.9 else 0.1)
-                        else:
-                            base = np.sin(2*np.pi*800*t)*0.1
-                            base[::2000] = 0.8
-                            return base
-                
-                audio = AudioClip(make_audio, duration=duration, fps=sr)
-                clip = clip.set_audio(audio)
-            
-            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
-            tmp.close()
-            clip.write_videofile(tmp.name, fps=24, codec='libx264', audio_codec='aac', logger=None)
-            
-            st.success("¡Video Listo con Musica!")
-            st.video(tmp.name)
-            st.balloons()
-            with open(tmp.name, "rb") as f:
-                st.download_button("Descargar Video", f.read(), file_name="brasil_con_musica.mp4", mime="video/mp4", use_container_width=True)
-        except Exception as e:
-            st.error(f"Error: {e}")
-else:
-    st.info("Sube una imagen para empezar")
+if imagen:
+    img = Image.open(imagen).convert("RGB")
+    st.image(img, caption="Imagen para video 1 hora", use_container_width=True)
+    if st.button("GENERAR VIDEO 1 HORA", use_container_width=True):
+        if not mp3:
+            st.error("¡Primero sube el MP3! Sin MP3 no hay música real.")
+        else:
+            try:
+                with st.spinner(f"Generando {duracion//60} min... espera"):
+                    tmp_a = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+                    tmp_a.write(mp3.read()); tmp_a.close()
+                    audio = AudioFileClip(tmp_a.name).set_duration(duracion)
+                    if audio.duration < duracion:
+                        audio = audio.loop(duration=duracion)
+                    
+                    clip = ImageClip(np.array(img)).set_duration(duracion).resize(height=720).set_audio(audio)
+                    tmp_v = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
+                    tmp_v.close()
+                    clip.write_videofile(tmp_v.name, fps=24, codec='libx264', audio_codec='aac', logger=None)
+                    st.success("¡VIDEO DE 1 HORA LISTO!")
+                    st.video(tmp_v.name)
+                    with open(tmp_v.name, "rb") as f:
+                        st.download_button("DESCARGAR VIDEO 1 HORA", f.read(), file_name=f"brasil_{duracion}s.mp4", mime="video/mp4", use_container_width=True)
+            except Exception as e:
+                st.error(f"Error: {e}")
