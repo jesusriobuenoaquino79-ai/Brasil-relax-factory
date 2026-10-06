@@ -13,10 +13,15 @@ st.title("Brasil Relax - FABRICA CELULAR")
 
 if 'lista' not in st.session_state:
     st.session_state.lista = []
+if 'nombres' not in st.session_state:
+    st.session_state.nombres = []
+if 'uploader_key' not in st.session_state:
+    st.session_state.uploader_key = 0
 
 duracion = st.slider("Duracion del video (segundos)", 60, 3600, 1200)
 
-mp3 = st.file_uploader("1. Sube 1 MP3", type=["mp3","wav","m4a","wma"])
+# Este truco borra el archivo despues de agregarlo
+mp3 = st.file_uploader("1. Sube 1 MP3", type=["mp3","wav","m4a","wma"], key=f"mp3_{st.session_state.uploader_key}")
 
 c1, c2 = st.columns(2)
 with c1:
@@ -26,14 +31,27 @@ with c1:
             t.write(mp3.read())
             t.close()
             st.session_state.lista.append(t.name)
-            st.success("Agregada OK")
+            st.session_state.nombres.append(mp3.name)
+            # Esto limpia el cargador para la siguiente cancion
+            st.session_state.uploader_key += 1
+            st.rerun()
+        else:
+            st.warning("Selecciona un MP3 primero")
 with c2:
     if st.button("BORRAR TODO", use_container_width=True):
         st.session_state.lista = []
-        st.info("Lista borrada")
+        st.session_state.nombres = []
+        st.session_state.uploader_key += 1
+        st.rerun()
 
 st.write("Total guardadas:")
 st.write(len(st.session_state.lista))
+
+# Aqui ves que canciones ya agregaste
+if len(st.session_state.nombres) > 0:
+    st.write("Canciones agregadas:")
+    for i, nom in enumerate(st.session_state.nombres, 1):
+        st.write(f"{i}. {nom}")
 
 imagen = st.file_uploader("2. Sube la imagen", type=["jpg","jpeg","png"])
 
