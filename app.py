@@ -1,41 +1,60 @@
 import streamlit as st
 from PIL import Image
+# Fix para Pillow nuevo
 if not hasattr(Image, 'ANTIALIAS'):
     Image.ANTIALIAS = Image.LANCZOS
-import numpy as np, tempfile
-from moviepy.editor import ImageClip, AudioFileClip
 
-st.set_page_config(page_title="Brasil Relax 1 HORA", layout="centered")
-st.title("🇧🇷 Brasil Relax - 1 HORA REAL")
+import numpy as np
+import tempfile
+from moviepy.editor import ImageClip, AudioFileClip, concatenate_audioclips
+from moviepy.audio.fx.all import audio_fadein, audio_fadeout
 
-duracion = st.slider("Duración del video (segundos)", 8, 3600, 60, help="8=prueba, 3600=1 hora")
-st.write(f"Vas a generar: {duracion//60} minutos y {duracion%60} segundos")
+st.set_page_config(page_title="Brasil Relax Final", layout="centered")
 
-mp3 = st.file_uploader("SUBE AQUÍ TU MP3 REAL (Bossa Nova o Lluvia de 1 hora)", type=["mp3","wav","m4a"])
-imagen = st.file_uploader("Sube imagen cabaña", type=["jpg","jpeg","png"])
+st.title("🇧🇷 Brasil Relax - FINAL CONTINUO")
+st.caption("Sube 5-6 Bossa Novas de 3 min y las pega en 18 min continuos sin loop corto")
+
+# Controles
+duracion = st.slider("Duración del video final (segundos)", 8, 3600, 1200, help="1200 = 20 minutos. 3600 = 1 hora")
+crossfade = 3
+
+col1, col2 = st.columns(2)
+with col1:
+    mp3s = st.file_uploader("1. SUBE LAS 5-6 MP3 AQUÍ", type=["mp3","wav","m4a"], accept_multiple_files=True)
+with col2:
+    imagen = st.file_uploader("2. SUBE IMAGEN CABAÑA", type=["jpg","jpeg","png"])
 
 if imagen:
-    img = Image.open(imagen).convert("RGB")
-    st.image(img, caption="Imagen para video 1 hora", use_container_width=True)
-    if st.button("GENERAR VIDEO 1 HORA", use_container_width=True):
-        if not mp3:
-            st.error("¡Primero sube el MP3! Sin MP3 no hay música real.")
+    st.image(Image.open(imagen), caption="Imagen usada", use_container_width=True)
+
+    if st.button("🚀 GENERAR VIDEO FINAL", type="primary", use_container_width=True):
+        if not mp3s:
+            st.error("¡Falta subir las músicas!")
         else:
-            try:
-                with st.spinner(f"Generando {duracion//60} min... espera"):
-                    tmp_a = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
-                    tmp_a.write(mp3.read()); tmp_a.close()
-                    audio = AudioFileClip(tmp_a.name).set_duration(duracion)
-                    if audio.duration < duracion:
-                        audio = audio.loop(duration=duracion)
+            with st.spinner(f"Armando {len(mp3s)} canciones con pegado suave... puede tardar 2-4 min"):
+                try:
+                    audios_procesados = []
+                    temp_paths = []
+                    for f in mp3s:
+                        tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp3")
+                        tmp.write(f.read())
+                        tmp.close()
+                        temp_paths.append(tmp.name)
+                        clip = AudioFileClip(tmp.name)
+                        # Fade suave para que no haya golpe
+                        clip = clip.fx(audio_fadein, 1).fx(audio_fadeout, 1)
+                        audios_procesados.append(clip)
+
+                    # Pega con overlap de 3 segundos para que no se note el corte
+                    audio_unido = concatenate_audioclips(audios_procesados, padding=-crossfade)
                     
-                    clip = ImageClip(np.array(img)).set_duration(duracion).resize(height=720).set_audio(audio)
-                    tmp_v = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
-                    tmp_v.close()
-                    clip.write_videofile(tmp_v.name, fps=24, codec='libx264', audio_codec='aac', logger=None)
-                    st.success("¡VIDEO DE 1 HORA LISTO!")
-                    st.video(tmp_v.name)
-                    with open(tmp_v.name, "rb") as f:
-                        st.download_button("DESCARGAR VIDEO 1 HORA", f.read(), file_name=f"brasil_{duracion}s.mp4", mime="video/mp4", use_container_width=True)
-            except Exception as e:
-                st.error(f"Error: {e}")
+                    # Si pide más tiempo que lo que tenemos, loopea el bloque grande (18 min) no 1 canción
+                    if audio_unido.duration < duracion:
+                        audio_final = audio_unido.loop(duration=duracion)
+                    else:
+                        audio_final = audio_unido.subclip(0, duracion)
+
+                    img = Image.open(imagen).convert("RGB")
+                    video = ImageClip(np.array(img)).set_duration(duracion).resize(height=720).set_audio(audio_final)
+
+                    out
