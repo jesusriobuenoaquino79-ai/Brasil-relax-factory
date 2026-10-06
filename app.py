@@ -1,5 +1,9 @@
 import streamlit as st
 from PIL import Image
+# --- PARCHE PARA EL ERROR ANTIALIAS ---
+if not hasattr(Image, 'ANTIALIAS'):
+    Image.ANTIALIAS = Image.LANCZOS
+
 import numpy as np
 import tempfile
 
@@ -21,38 +25,27 @@ if uploaded:
         try:
             from moviepy.editor import ImageClip, AudioClip
             duration = 8
-            # Video con zoom lento
             clip = ImageClip(np.array(img)).set_duration(duration)
-            clip = clip.resize(height=720).resize(lambda t: 1 + 0.05*t)
-            clip = clip.set_position("center")
+            clip = clip.resize(height=720)
             
-            # Audio simple
             sr = 44100
-            if musica == "Lluvia Suave":
-                def make_audio(t):
-                    return np.random.uniform(-0.1, 0.1)
-                audio = AudioClip(lambda t: [make_audio(t)], duration=duration, fps=sr)
-                clip = clip.set_audio(audio)
-            elif musica == "Bossa Nova":
-                def make_audio(t):
-                    return 0.15 * np.sin(2 * 3.1416 * 220 * t)
-                audio = AudioClip(lambda t: [make_audio(t)], duration=duration, fps=sr)
-                clip = clip.set_audio(audio)
-            elif musica == "Bosque Pajaros":
-                def make_audio(t):
-                    return np.random.uniform(-0.05, 0.05)
-                audio = AudioClip(lambda t: [make_audio(t)], duration=duration, fps=sr)
+            if musica != "Sin música":
+                if musica == "Lluvia Suave":
+                    audio = AudioClip(lambda t: [np.random.uniform(-0.1, 0.1)], duration=duration, fps=sr)
+                elif musica == "Bossa Nova":
+                    audio = AudioClip(lambda t: [0.15*np.sin(2*3.1416*220*t)], duration=duration, fps=sr)
+                else:
+                    audio = AudioClip(lambda t: [np.random.uniform(-0.05, 0.05)], duration=duration, fps=sr)
                 clip = clip.set_audio(audio)
             
             tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
             tmp.close()
             clip.write_videofile(tmp.name, fps=24, codec='libx264', audio_codec='aac', logger=None)
             
-            st.success("Listo!")
+            st.success("¡Video Listo!")
             st.video(tmp.name)
             with open(tmp.name, "rb") as f:
                 st.download_button("Descargar Video", f.read(), file_name="brasil.mp4", mime="video/mp4", use_container_width=True)
-                
         except Exception as e:
             st.error(f"Error: {e}")
 else:
