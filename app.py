@@ -41,40 +41,12 @@ with c2:
         st.rerun()
 
 st.write(f"Total: {len(st.session_state.lista)} canciones")
-if len(st.session_state.nombres) > 0:
-    for i, nom in enumerate(st.session_state.nombres, 1):
-        st.write(f"{i}. {nom}")
+for i, nom in enumerate(st.session_state.nombres, 1):
+    st.write(f"{i}. {nom}")
 
 imagen = st.file_uploader("2. Sube la imagen", type=["jpg","jpeg","png"])
 
 if imagen:
     st.image(Image.open(imagen), use_container_width=True)
     if st.button("GENERAR VIDEO FINAL", type="primary", use_container_width=True):
-        if len(st.session_state.lista) == 0:
-            st.error("Agrega canciones")
-        else:
-            with st.spinner("Creando video... espera 2 a 3 minutos, no cierres"):
-                try:
-                    audios = [AudioFileClip(p) for p in st.session_state.lista]
-                    # ARREGLO: sin padding para que no falle
-                    if len(audios) == 1:
-                        audio_unido = audios[0]
-                    else:
-                        audio_unido = concatenate_audioclips(audios)
-
-                    if audio_unido.duration < duracion:
-                        audio_final = audio_unido.loop(duration=duracion)
-                    else:
-                        audio_final = audio_unido.subclip(0, duracion)
-
-                    img = Image.open(imagen).convert("RGB")
-                    video = ImageClip(np.array(img)).set_duration(duracion).resize(height=720).set_audio(audio_final)
-                    salida = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
-                    video.write_videofile(salida, fps=24, codec='libx264', audio_codec='aac', logger=None)
-
-                    st.success("VIDEO LISTO")
-                    st.video(salida)
-                    with open(salida, "rb") as f:
-                        st.download_button("DESCARGAR VIDEO", f.read(), file_name="Brasil_Relax_1_Hora.mp4", use_container_width=True)
-                except Exception as e:
-                    st.error(f"Error: {e}")
+       
